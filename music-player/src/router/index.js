@@ -6,6 +6,7 @@ const Rank = (resolve) => require(['@/components/rank/rank.vue'], resolve)
 const Search = (resolve) => require(['@/components/search/search.vue'], resolve)
 const Singer = (resolve) => require(['@/components/singer/singer.vue'], resolve)
 const Disc = (resolve) => require(['@/components/disc/disc.vue'], resolve)
+const SingerDetail = (resolve) => require(['@/components/singerDetail/singerDetail.vue'], resolve)
 export default new Router({
   routes: [{
       path: '/',
@@ -23,7 +24,11 @@ export default new Router({
     }, {
       name: 'singer',
       component: Singer,
-      path: '/singer'
+      path: '/singer',
+      children: [{
+        path: ':id',
+        component: SingerDetail
+      }]
     }, {
       name: 'recommend',
       component: Recommend,

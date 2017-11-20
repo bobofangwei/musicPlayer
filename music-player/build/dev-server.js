@@ -27,9 +27,11 @@ const compiler = webpack(webpackConfig)
 /*my own Code*/
 var apiRouter = express.Router();
 var axios = require('axios');
+
+// const urls=[];
 // 获取歌单列表的接口
 apiRouter.get('/getDiscList', (req, res) => {
-  let url = 'https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg';
+  const url = 'https://c.y.qq.com/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg';
   // console.log('req.headers', req.headers);
   // console.log('req.query', req.query);
   return axios.get(url, {

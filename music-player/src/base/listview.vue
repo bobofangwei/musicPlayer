@@ -4,7 +4,7 @@
       <li class="list-group" ref="listGroup" v-for="group in data">
         <h2 class="list-group-title">{{group.title}}</h2>
         <ul>
-          <li class="list-group-item" v-for="item in group.items">
+          <li class="list-group-item" v-for="item in group.items" @click="selectItem(item)">
             <img class="avatar" v-lazy="item.avatar">
             <span class="name">{{item.name}}</span>
           </li>
@@ -99,6 +99,9 @@ export default {
     },
     refresh: function() {
       this.$refs.scroll.refresh();
+    },
+    selectItem: function(item) {
+      this.$emit('selectItem', item);
     }
   },
   watch: {
