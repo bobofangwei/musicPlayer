@@ -1,7 +1,7 @@
 <template lang="html">
   <div class="songlist-wrapper">
     <ul class="music-list">
-      <li class="music-item" v-for="song in songs">
+      <li class="music-item" v-for="(song,index) in songs" @click="handleClick(song,index)">
         <div class="music-title">{{song.name}}</div>
         <div class="music-content">{{song.singer}}-{{song.album}}</div>
       </li>
@@ -17,6 +17,11 @@ export default {
       default: function() {
         return [];
       }
+    }
+  },
+  methods: {
+    handleClick(song, index) {
+      this.$emit('selectSong', song, index);
     }
   }
 }

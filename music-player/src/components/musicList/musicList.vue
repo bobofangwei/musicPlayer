@@ -13,7 +13,7 @@
     </div>
     <div class="bg-layer" ref="bgLayer"></div>
     <scroll ref="scroll" class="scroll" :probeType="probeType" :listenScroll="listenScroll" @scroll="handleScroll">
-      <songlist :songs="songs"></songlist>
+      <songlist :songs="songs" @selectSong="handleSongSelect"></songlist>
     </scroll>
   </div>
 
@@ -26,6 +26,9 @@ import songlist from '@/base/songlist.vue';
 import {
   prefix
 } from '@/util/dom.js';
+import {
+  mapActions
+} from 'vuex';
 const transform = prefix('transform');
 const backdrop = prefix('backdrop-filter');
 const RESERVED_HEIGHT = 30; // 歌曲列表能够滚动上移的最大高度
@@ -66,7 +69,20 @@ export default {
     },
     handleScroll(pos) {
       this.scrollY = pos.y;
-    }
+    },
+    handleSongSelect(song, index) {
+      // 1.设置播放器的playList为当前歌手的歌曲列表，即songs
+      // 2.设置播放器的currentIndex
+      // 3.设置播放器的fullScreen,以及playing状态
+      // 更改vuex中的状态需要用到mutations,上述动作都统一封装到action中完成
+      this.selectSong({
+        list: this.songs,
+        index: index
+      });
+    },
+    ...mapActions([
+      'selectSong'
+    ])
   },
   watch: {
     scrollY(newVal) {
