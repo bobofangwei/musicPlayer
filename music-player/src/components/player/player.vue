@@ -1,25 +1,25 @@
 <template lang="html">
   <div class="player" v-show="playList.length>0">
     <transition name="normal" @enter="enter" @after-enter="afterEnter" @leave="leave" @after-leave="afterLeave">
-    <div class="normal-player" v-show="fullScreen" >
+      <div class="normal-player" v-show="fullScreen">
       <div class="top">
       <div class="shrink" @click="shrink"><i class="icon-back"></i></div>
       <h1 class="title">{{currentSong.name}}</h1>
       <h2 class="subtitle">{{currentSong.singer}}</h2>
       </div>
-      <div class="cd"><div class="cd-border" ref="cd"><img :src="currentSong.image" class="cd-image" alt=""></div><div class="single-line">乌云在我们心中留下阴影</div></div>
+      <div class="cd"><div class="cd-border" ref="cd" :class="[playing? 'play': 'pause']"><img :src="currentSong.image" class="cd-image" alt=""></div><div class="single-line">乌云在我们心中留下阴影</div></div>
 
 
       <div class="play-pane">
         <div class="dot-wrapper"><span class="dot active"></span><span class="dot"></span></div>
         <div class="progress-wrapper">
-          <progress-bar :percent="20"></progress-bar>
+          <progress-bar :percent="audioPercent" :curTime="curTime" :totalTime="currentSong.duration" @percentChange="percentChange"></progress-bar>
         </div>
         <div class="ope-wrapper">
-          <div class="icon"><i class="icon-sequence"></i></div>
-          <div class="icon"><i class="icon-prev"></i></div>
-          <div class="icon"><i class="icon-play"></i></div>
-          <div class="icon"><i class="icon-next"></i></div>
+          <div class="icon"><i :class="modeClass" @click="changePlayMode"></i></div>
+          <div class="icon"><i class="icon-prev" @click="prevSong" :class="[audioReady?'':'disable']"></i></div>
+          <div class="icon"><i :class="[playing? 'icon-pause': 'icon-play', audioReady?'':'disable']" @click="togglePlay"></i></div>
+          <div class="icon"><i class="icon-next" @click="nextSong" :class="[audioReady?'':'disable']"></i></div>
           <div class="icon"><i class="icon-not-favorite"></i></div>
         </div>
       </div>
@@ -27,8 +27,8 @@
     </div>
     </transition>
     <transition name="mini">
-    <div class="mini-player" v-show="!fullScreen" @click="spread">
-      <div class="cd-wrapper">
+      <div class="mini-player" v-if="!fullScreen" @click="spread">
+      <div class="cd-wrapper" >
         <img :src="currentSong.image" alt="" class="cd">
       </div>
       <div class="text-wrapper">
@@ -36,12 +36,19 @@
         <p class="song-singer">{{currentSong.singer}}</p>
       </div>
       <div class="ope-wrapper">
-        <div class="icon"><i class="icon-next"></i></div>
-        <div class="icon"><i class="icon-next"></i></div>
+        <!--需要阻止子元素点击事件的冒泡，防止全屏播放器展开-->
+      <progress-circle class="mini-icon pro-circle"  :radius="32" :percent="audioPercent">
+        <i class="icon-mini" @click.stop="togglePlay" :class="[!playing? 'icon-play-mini': 'icon-pause-mini']"></i>
+      </progress-circle>
+
+        <div class="mini-icon"><i class="icon-playlist"></i></div>
       </div>
 
     </div>
     </transition>
+    <!--使用html5的audio实现音乐器播放功能-->
+    <!--如果上一首或者下一首快速切换的时候，可能会报错，为了解决这个问题，监听audio的canplay以及error事件-->
+    <audio :src="currentSong.url" ref="audio" @ended="audioEnd" @canplay="audioReadyHandler" @error="audioErrorHandler" @timeupdate="audioUpdateTime"></audio>
   </div>
 
 </template>
@@ -50,10 +57,12 @@
 import {
   mapGetters,
   mapState,
-  mapMutations
+  mapMutations,
+  mapActions
 } from 'vuex';
 import * as types from '@/store/mutation_types.js';
 import progressBar from '@/base/progressbar';
+import progressCircle from '@/base/progresscircle';
 // create-keyframe-animation 第三方动画库，用于实现cd飞入的动画效果
 import keyframeAnimation from 'create-keyframe-animation';
 // 尝试使用velocity实现cd飞入的动画效果，但是没有实现
@@ -61,18 +70,35 @@ import keyframeAnimation from 'create-keyframe-animation';
 import {
   prefix
 } from '@/util/dom.js';
+import {
+  PLAYMODE
+} from '@/common/js/config.js';
+import {
+  shuffle
+} from '@/util/util.js';
 const transform = prefix('transform');
 
 export default {
+  data: function() {
+    return {
+      audioReady: false, // 标记auido元素是否准备好播放
+      curTime: 0
+    }
+  },
   computed: {
     ...mapGetters(['currentSong']),
-    ...mapState(['playing', 'fullScreen', 'playList', 'sequenceList', 'mode'])
+    ...mapState(['playing', 'fullScreen', 'playList', 'sequenceList', 'mode', 'currentIndex']),
+    audioPercent() {
+      return this.curTime / (+this.currentSong.duration);
+    },
+    modeClass() {
+      return this.mode === PLAYMODE.SEQUENCE ? 'icon-sequence' : (this.mode === PLAYMODE.LOOP ? 'icon-loop' : 'icon-random');
+    }
   },
-  created: function() {
-    console.log('currentSong', this.currentSong);
-  },
+  created: function() {},
   components: {
-    progressBar
+    progressBar,
+    progressCircle
   },
   methods: {
     // 正常的播放器收起，显示mini-player
@@ -82,9 +108,20 @@ export default {
     spread: function() {
       this.setFullscreen(true);
     },
+    // progressBar触发的percentChange事件传递到父组件
+    percentChange: function(curPercent) {
+      this.curTime = (+this.currentSong.duration) * curPercent;
+      // 改变歌曲进度
+      this.$refs.audio.currentTime = this.curTime;
+      if (!this.playing) {
+        this.togglePlay();
+      }
+    },
     // 以下几个方法用于实现动画效果
     // 在全屏播放器展开的时候，mini播放器的cd类似于飞到全屏播放器cd的位置
     enter: function(el, done) {
+      // 从其他样式向样式表中配置的最终样式变化
+      // 借助于keyframeAnimation
       const {
         x,
         y,
@@ -112,11 +149,12 @@ export default {
       keyframeAnimation.runAnimation(this.$refs.cd, 'move', done);
     },
     afterEnter: function(el) {
-      // keyframeAnimation.unregisterAnimation('move');
+      keyframeAnimation.unregisterAnimation('move');
       // 清空animation
       this.$refs.cd.style.animation = '';
     },
     leave: function(el, done) {
+      // 从样式表中的样式，向其他样式动画，只需要借助css3的transform,transition即可
       this.$refs.cd.style.transition = 'all 400ms';
       const {
         x,
@@ -133,10 +171,12 @@ export default {
     // 协助实现cd飞入的动画中位置和缩放的计算
     // 从mini-player到normal-player的飞入
     _getPosAndScale: function() {
+      // 小cd的位置信息
       const miniWidth = 40;
       const miniLeft = 30;
       const miniBottom = 10;
       // 高度和宽度是一样的
+      // 大cd的位置信息
       const normalWidth = window.innerWidth * 0.8;
       const normalTop = 80;
       let x = -(window.innerWidth / 2 - miniLeft - miniWidth / 2);
@@ -150,15 +190,137 @@ export default {
         scale
       };
     },
+    // 切换歌曲的播放与暂停
+    togglePlay: function(e) {
+      this.setPlaying(!this.playing);
+      // 拒绝命令式代码，通过判断this.playing的真假，决定是播放还是暂停
+      // 通过下面watchplaying来决定
+    },
+    // 上一首歌
+    prevSong: function() {
+      console.log('prev audioReady', this.audioReady);
+      if (!this.audioReady) {
+        return;
+      }
+      let index = this.currentIndex - 1;
+      if (index < 0) {
+        index = this.playList.length - 1;
+      }
+      this.setCurrentindex(index);
+      // 如果在暂停状态下点击上一首或者下一首，那么上一首或者下一首自动开始播放
+      if (!this.playing) {
+        this.togglePlay();
+      }
+      this.audioReady = false;
+    },
+    // 下一首歌
+    nextSong: function() {
+      if (!this.audioReady) {
+        return;
+      }
+      let index = this.currentIndex + 1;
+      if (index >= this.playList.length) {
+        index = 0;
+      }
+      // 下面的操作会导致currentSong发生变化，触发currentSong的watch事件
+      this.setCurrentindex(index);
+      if (!this.playing) {
+        this.togglePlay();
+      }
+      // 触发歌曲改变
+      this.audioReady = false;
+    },
+    // audio Ready事件的监听函数
+    // 当audio的src属性发生变化时，会检测这一事件
+    audioReadyHandler: function() {
+      // 防止上一首，下一首快速切换报错
+      this.audioReady = true;
+    },
+    // audio Error事件的监听函数
+    audioErrorHandler: function() {
+      // 如果歌曲的url有问题，或者网络有问题，会触发auido的error的事件
+      // 此时audioReady一直不会置为true,需要手动设置
+      this.audioReady = true;
+    },
+    // audio元素自带的事件，诸如canplay,ended,error,timeupdate等
+    audioUpdateTime: function(e) {
+      this.curTime = e.target.currentTime;
+    },
+    // 歌曲播放完毕
+    audioEnd: function() {
+      // 在不考虑循环的条件下，播放下一首
+      if (this.mode === PLAYMODE.LOOP) {
+        this.loop();
+      } else {
+        this.nextSong();
+      }
+    },
+    // 循环播放某首歌曲
+    loop: function() {
+      this.$refs.audio.currentTime = 0;
+      this.$refs.audio.play();
+      this.setPlaying(true);
+    },
+    // 切换播放模式，一共有三种
+    // 0:顺序，1：循环；2：随机
+    // 顺序与随机播放通过改变playlist来实现
+    // 循环播放通过监听audio的ended事件来完成
+    changePlayMode: function() {
+      let mode = (this.mode + 1) % 3;
+      this.setPlayMode(mode);
+      // 如果是随机播放
+      let curPlayList;
+      if (mode === PLAYMODE.RANDOM) {
+        curPlayList = shuffle(this.sequenceList);
+        // 在循环播放模式下，当前播放的歌曲不应该改变，而currentSong是由playList[currentIndex]计算出来的，因此需要重新寻找歌曲的位置
+        let index = curPlayList.findIndex((item) => {
+          return item.id === this.currentSong.id;
+        });
+        this.setCurrentindex(index);
+      } else {
+        // 无论是顺序模式还是循环模式，playList都应该是正常顺序
+        curPlayList = this.sequenceList;
+      }
+      this.setPlayList(curPlayList);
+    },
     ...mapMutations({
-      setFullscreen: types.SET_FULLSCREEN
+      setFullscreen: types.SET_FULLSCREEN,
+      setPlaying: types.SET_PLAYING,
+      setCurrentindex: types.SET_CURRENTINDEX,
+      setPlayMode: types.SET_PLAYMODE,
+      setPlayList: types.SET_PLAYLIST
+    }),
+    ...mapActions({
+      changeMode: 'changePlayMode'
     })
+  },
+  watch: {
+    // 在currentsong发生变化的时候，播放播放器
+    // 在初始加载，currentIndex被修改的时候，都能触发currentSong的修改
+    currentSong(newSong, oldSong) {
+      if (newSong.id === oldSong.id) {
+        return;
+      }
+      console.log('currentSong change', this.currentSong);
+      this.$nextTick(function() {
+        this.$refs.audio.play();
+      });
+    },
+    // 监听play的变化，决定是播放还是暂停
+    // 播放器播放功能实现
+    playing(newVal) {
+      const audio = this.$refs.audio;
+      this.$nextTick(function() {
+        newVal ? audio.play() : audio.pause();
+      });
+    }
   }
 }
 </script>
 
 <style lang="scss" scoped>
 @import '../../common/scss/variable.scss';
+
 .player {
     .normal-player {
         position: fixed;
@@ -207,6 +369,12 @@ export default {
                 border-radius: 50%;
                 border: 10px solid rgba(255, 255, 255, 0.1);
                 transform-origin: 50% 50%;
+                &.play {
+                    animation: rotate 10s linear infinite;
+                }
+                &.pause {
+                    animation-play-state: paused;
+                }
                 .cd-image {
                     width: 100%;
                     height: 100%;
@@ -249,6 +417,9 @@ export default {
                 .icon {
                     color: $color-theme;
                     font-size: 30px;
+                    &.disable {
+                        color: #333;
+                    }
                 }
             }
         }
@@ -269,11 +440,17 @@ export default {
                 width: 40px;
                 height: 40px;
                 border-radius: 50%;
+                &.play {
+                    animation: rotate 10s linear infinite;
+                }
+                &.pause {
+                    animation-play-state: puased;
+                }
             }
         }
         .text-wrapper {
             position: absolute;
-            left: 60px;
+            left: 80px;
             top: 10px;
             .song-name {
                 font-size: $font-size-medium;
@@ -287,8 +464,27 @@ export default {
         }
         .ope-wrapper {
             position: absolute;
-            right: 10px;
+            right: 5px;
             top: 10px;
+            .mini-icon {
+                float: left;
+                width: 32px;
+                height: 32px;
+                text-align: center;
+                line-height: 32px;
+                font-size: 28px;
+                color: $color-theme;
+                &:last-child {
+                    margin-left: 5px;
+                }
+            }
+            .icon-mini {
+                position: absolute;
+                top: 0;
+                left: 0;
+                font-size: 32px;
+                color: $color-theme-d;
+            }
         }
     }
     .normal-enter,
@@ -316,6 +512,15 @@ export default {
     .mini-enter-active,
     .mini-leave-active {
         transition: all 0.4s;
+    }
+    /*cd旋转的动画效果*/
+    @keyframes rotate {
+        0% {
+            transform: rotate(0);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
     }
 }
 </style>

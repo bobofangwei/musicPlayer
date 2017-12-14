@@ -7,7 +7,7 @@
       <h2 class="title">{{title}}</h2>
       <div class="play-wrapper" ref="playWrapper">
         <i class="icon-play"></i>
-        <span class="play-text">随机播放歌曲</span>
+        <span class="play-text" @click="randomPlayAll">随机播放全部</span>
       </div>
       <div class="filter" ref="filter"></div>
     </div>
@@ -80,8 +80,13 @@ export default {
         index: index
       });
     },
+    // 随机播放所有歌曲
+    randomPlayAll() {
+      this.randomPlayAll(this.songs);
+    },
     ...mapActions([
-      'selectSong'
+      'selectSong',
+      'randomPlayAll'
     ])
   },
   watch: {

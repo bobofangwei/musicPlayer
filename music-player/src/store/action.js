@@ -20,6 +20,7 @@ const actions = {
     index
   }) {
     commit(types.SET_SEQUENCELIST, list);
+    // 当点击了随机播放全部，再挑选歌曲的话，state.mode是随机模式
     if (state.mode === PLAYMODE.RANDOM) {
       // 将list随机排列
       let randomList = shuffle(list);
@@ -32,6 +33,19 @@ const actions = {
     commit(types.SET_FULLSCREEN, true);
     commit(types.SET_PLAYING, true);
     commit(types.SET_CURRENTINDEX, index);
+  },
+  // 随机播放全部功能实现
+  randomPlayAll({
+    state,
+    commit
+  }, list) {
+    commit(types.SET_FULLSCREEN, true);
+    commit(types.SET_PLAYMODE, PLAYMODE.RANDOM);
+    commit(types.SET_CURRENTINDEX, 0);
+    commit(types.SET_SEQUENCELIST, list);
+    let randomList = shuffle(list);
+    commit(types.SET_PLAYLIST, randomList);
+    commit(types.SET_PLAYING, true);
   }
 };
 export default actions;
