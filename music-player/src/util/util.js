@@ -16,3 +16,10 @@ export function findSongIndex(list, song) {
 export function paddingStart(str, num, char) {
   return (char.repeat(num) + str).slice(-num);
 };
+// 解析歌词文件，主要是解析其中的html特殊字符
+// &#58;——>:
+// &#46;——>.
+// &#10;——>换行
+export function parseLyric(lyricStr) {
+  return lyricStr.replace(/&#58;/g, ':').replace(/&#46;/g, '.').replace(/&#10;/g, '\r\n').replace(/&#32;/g, ' ').replace(/&#45;/g, '-');
+}

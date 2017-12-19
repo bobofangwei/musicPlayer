@@ -7,11 +7,19 @@
       <h1 class="title">{{currentSong.name}}</h1>
       <h2 class="subtitle">{{currentSong.singer}}</h2>
       </div>
-      <div class="cd"><div class="cd-border" ref="cd" :class="[playing? 'play': 'pause']"><img :src="currentSong.image" class="cd-image" alt=""></div><div class="single-line">乌云在我们心中留下阴影</div></div>
-
+      <!--左侧显示cd，右侧显示歌词,通过监听其touch事件达到这一效果-->
+      <div class="middle" @touchstart.stop="middleTouchStart" @touchend.stop="middleTouchEnd" @touchmove.stop="middleTouchMove">
+      <div class="middle-l cd"><div class="cd-border" ref="cd" :class="[playing? 'play': 'pause']"><img :src="currentSong.image" class="cd-image" alt=""></div><div class="single-line">乌云在我们心中留下阴影</div></div>
+      <scroll class="middle-r" :data="currentLyric.lines" v-if="currentLyric&&currentLyric.lines">
+        <!--歌词可以上下滑动-->
+          <div class="lyric-wrapper" v-if="currentLyric&&currentLyric.lines">
+            <p v-for="(line,index) in currentLyric.lines"  :class="[index === currentLineNum.lineNum? 'current': '', 'line']">{{line.txt}}</p>
+          </div>
+      </scroll>
+    </div>
 
       <div class="play-pane">
-        <div class="dot-wrapper"><span class="dot active"></span><span class="dot"></span></div>
+        <div class="dot-wrapper"><span :class="[currentShow==='cd'?'active':'', 'dot']"></span><span :class="[currentShow==='lyric'?'active':'', 'dot']"></span></div>
         <div class="progress-wrapper">
           <progress-bar :percent="audioPercent" :curTime="curTime" :totalTime="currentSong.duration" @percentChange="percentChange"></progress-bar>
         </div>
@@ -41,7 +49,7 @@
         <i class="icon-mini" @click.stop="togglePlay" :class="[!playing? 'icon-play-mini': 'icon-pause-mini']"></i>
       </progress-circle>
 
-        <div class="mini-icon"><i class="icon-playlist"></i></div>
+        <div class="mini-icon"><i :class="modeClass" @click.prevent.stop="changePlayMode"></i></div>
       </div>
 
     </div>
@@ -57,8 +65,7 @@
 import {
   mapGetters,
   mapState,
-  mapMutations,
-  mapActions
+  mapMutations
 } from 'vuex';
 import * as types from '@/store/mutation_types.js';
 import progressBar from '@/base/progressbar';
@@ -76,13 +83,18 @@ import {
 import {
   shuffle
 } from '@/util/util.js';
+import Lyric from 'lyric-parser';
+import scroll from '@/base/scroll.vue';
 const transform = prefix('transform');
 
 export default {
   data: function() {
     return {
       audioReady: false, // 标记auido元素是否准备好播放
-      curTime: 0
+      curTime: 0,
+      currentLyric: null, // 当前歌曲的歌词对象
+      currentLineNum: 0, // 当前播放到的歌词行数
+      currentShow: 'lyric' // 显示的是cd还是歌词
     }
   },
   computed: {
@@ -98,7 +110,8 @@ export default {
   created: function() {},
   components: {
     progressBar,
-    progressCircle
+    progressCircle,
+    scroll
   },
   methods: {
     // 正常的播放器收起，显示mini-player
@@ -268,20 +281,36 @@ export default {
     changePlayMode: function() {
       let mode = (this.mode + 1) % 3;
       this.setPlayMode(mode);
+      console.log('mode', this.mode);
       // 如果是随机播放
       let curPlayList;
       if (mode === PLAYMODE.RANDOM) {
         curPlayList = shuffle(this.sequenceList);
-        // 在循环播放模式下，当前播放的歌曲不应该改变，而currentSong是由playList[currentIndex]计算出来的，因此需要重新寻找歌曲的位置
-        let index = curPlayList.findIndex((item) => {
-          return item.id === this.currentSong.id;
-        });
-        this.setCurrentindex(index);
       } else {
-        // 无论是顺序模式还是循环模式，playList都应该是正常顺序
         curPlayList = this.sequenceList;
       }
+      // 切换播放模式不应该影响当前歌曲的播放，而currentSong是由playList[currentIndex]计算出来的，可能因为playList的改变而发生改变，因此需要重新寻找歌曲的位置
+      let index = curPlayList.findIndex((item) => {
+        return item.id === this.currentSong.id;
+      });
+      this.setCurrentindex(index);
       this.setPlayList(curPlayList);
+    },
+    // 处理歌词播放和歌词轮播等
+    getLyric() {
+      this.currentSong.getSongLyric().then((lyric) => {
+        this.currentLyric = new Lyric(lyric, this.lyricHandler);
+        console.log('lyricObject', this.currentLyric);
+        if (this.playing) {
+          this.currentLyric.play();
+        }
+      });
+    },
+    // 歌词对象初始化构造函数中传入的构造函数
+    // 在播放到每一句歌词的时候调用
+    // 需要做的事情，高亮当前歌词行
+    lyricHandler(lineNum, lineTxt) {
+      this.currentLineNum = lineNum;
     },
     ...mapMutations({
       setFullscreen: types.SET_FULLSCREEN,
@@ -289,9 +318,6 @@ export default {
       setCurrentindex: types.SET_CURRENTINDEX,
       setPlayMode: types.SET_PLAYMODE,
       setPlayList: types.SET_PLAYLIST
-    }),
-    ...mapActions({
-      changeMode: 'changePlayMode'
     })
   },
   watch: {
@@ -304,6 +330,7 @@ export default {
       console.log('currentSong change', this.currentSong);
       this.$nextTick(function() {
         this.$refs.audio.play();
+        this.getLyric();
       });
     },
     // 监听play的变化，决定是播放还是暂停
@@ -348,10 +375,15 @@ export default {
             text-align: center;
             font-size: $font-size-medium;
         }
-        .cd {
+        .middle {
             position: absolute;
+            width: 100%;
             top: 80px;
             left: 0;
+            bottom: 170px;
+        }
+        .middle-l {
+            position: relative;
             text-align: center;
             width: 100%;
             height: 0;
@@ -360,8 +392,8 @@ export default {
             text-align: center;
             .cd-border {
                 position: absolute;
-                top: 0;
                 left: 10%;
+                top: 0;
                 width: 80%;
                 height: 100%;
                 display: inline-block;
@@ -379,6 +411,25 @@ export default {
                     width: 100%;
                     height: 100%;
                     border-radius: 50%;
+                }
+            }
+        }
+        /*歌词部分的布局*/
+        .middle-r {
+            position: absolute;
+            top: 0;
+            left: 10%;
+            width: 80%;
+            height: 100%;
+            overflow: hidden;
+            text-align: center;
+            .line {
+                line-height: 32px;
+                height: 32px;
+                font-size: $font-size-medium;
+                color: $color-text-l;
+                &.current {
+                    color: $color-text;
                 }
             }
         }

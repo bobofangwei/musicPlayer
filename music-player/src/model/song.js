@@ -1,3 +1,10 @@
+import {
+  parseLyric
+} from '@/util/util.js';
+import {
+  getLyric
+} from '@/api/song.js';
+
 var Song = {
   init: function(id, mid, singer, name, album, duration, image, url) {
     this.id = id;
@@ -16,6 +23,18 @@ var Song = {
       return item.name;
     });
     this.init(musicData.songid, musicData.songmid, singers.join(','), musicData.songname, musicData.albumname, musicData.interval, image, url);
+  },
+  getSongLyric: function() {
+    if (!this.id) {
+      return;
+    }
+    return getLyric(this.id).then((res) => {
+      if (res.retcode === 0) {
+        return parseLyric(res.lyric);
+      } else {
+        return 'no lyric';
+      }
+    });
   }
 };
 export default Song;
