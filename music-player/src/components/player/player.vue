@@ -9,8 +9,8 @@
       </div>
       <!--左侧显示cd，右侧显示歌词,通过监听其touch事件达到这一效果-->
       <div class="middle" @touchstart.stop="middleTouchStart" @touchend.stop="middleTouchEnd" @touchmove.stop="middleTouchMove">
-      <div class="middle-l cd"><div class="cd-border" ref="cd" :class="[playing? 'play': 'pause']"><img :src="currentSong.image" class="cd-image" alt=""></div><div class="single-line">乌云在我们心中留下阴影</div></div>
-      <scroll class="middle-r" :data="currentLyric.lines" v-if="currentLyric&&currentLyric.lines">
+      <div class="middle-l cd" ref="middleL"><div class="cd-border" ref="cd" :class="[playing? 'play': 'pause']"><img :src="currentSong.image" class="cd-image" alt=""></div><div class="single-line">乌云在我们心中留下阴影</div></div>
+      <scroll class="middle-r" :data="currentLyric.lines" v-if="currentLyric&&currentLyric.lines" ref="middleR">
         <!--歌词可以上下滑动-->
           <div class="lyric-wrapper" v-if="currentLyric&&currentLyric.lines">
             <p v-for="(line,index) in currentLyric.lines"  :class="[index === currentLineNum.lineNum? 'current': '', 'line']">{{line.txt}}</p>
@@ -86,6 +86,7 @@ import {
 import Lyric from 'lyric-parser';
 import scroll from '@/base/scroll.vue';
 const transform = prefix('transform');
+const transitionDuration = prefix('transitionDuration');
 
 export default {
   data: function() {
@@ -94,7 +95,7 @@ export default {
       curTime: 0,
       currentLyric: null, // 当前歌曲的歌词对象
       currentLineNum: 0, // 当前播放到的歌词行数
-      currentShow: 'lyric' // 显示的是cd还是歌词
+      currentShow: 'cd' // 显示的是cd还是歌词
     }
   },
   computed: {
@@ -107,7 +108,9 @@ export default {
       return this.mode === PLAYMODE.SEQUENCE ? 'icon-sequence' : (this.mode === PLAYMODE.LOOP ? 'icon-loop' : 'icon-random');
     }
   },
-  created: function() {},
+  created: function() {
+    this.touchData = {};
+  },
   components: {
     progressBar,
     progressCircle,
@@ -312,6 +315,97 @@ export default {
     lyricHandler(lineNum, lineTxt) {
       this.currentLineNum = lineNum;
     },
+    // 以下三个方法监听滑动事件，实现cd和歌词区域的切换
+    // 监听移动端的滑动事件，在zepto下有swipeLeft,swipeRight等方法
+    // 如果使用js原生的方法，那么就是检测touchStart,touchMove,touchEnd这三个事件
+    // 基本思路是在touchStart事件里面获取startX,startY
+    // 在touchEnd事件里面获取endX,endY
+    // distanceX=endX-startX,如果为正的话向右滑动，为负的话向左滑动
+    // distanceY=endY-startY,如果为正的话向下滑动，为负的话向上滑动
+    // 因为一般不会是正上正下的滑动，因此还需要比较absolute(distanceX)与ansolute(distanceY)的大小，前者大为左右滑动，后者大为上下滑动
+    // 但是上面有个问题，在andoid下，滑动事件只会触发touchStart和touchMove，在手指离开的时候，并不会触发touchEnd事件，只有在touchmove的默认事件取消之后，才会触发touchEnd事件
+    // 所以，还需要对touchmove事件进行处理，思路是在用户刚开始滑动（第一次)的时候，判断用户是上下滑动，还是左右滑动，判断方法同上，并调用对应的e.prenventDefault()操作
+    middleTouchStart(e) {
+      // 该变量用来记录一次完整的滑动事件
+      this.touchData.initiated = true;
+      // 检测第一次滑动
+      this.touchData.moved = false;
+      let touch = e.targetTouches[0];
+      this.touchData.startX = touch.pageX;
+      this.touchData.startY = touch.pageY;
+    },
+    middleTouchMove(e) {
+      if (!this.touchData.initiated) {
+        return;
+      }
+      if (!this.touchData.moved) {
+        this.touchData.moved = true;
+      }
+      let touch = e.changedTouches[0];
+      let deltaX = touch.pageX - this.touchData.startX;
+      let deltaY = touch.pageY - this.touchData.startY;
+      if (Math.abs(deltaY) < Math.abs(deltaX)) {
+        // 说明是左右滑动
+        if (!this.touchData.moved) {
+          this.touchData.moved = true;
+        }
+        // 在左右滑动的同事，调整middleL和middlR的位置
+        // middleR区域在不同currentShow的情况下，距离屏幕左侧的距离
+        let left = this.currentShow === 'cd' ? 0 : -window.innerWidth;
+        // lyric区域距离页面的坐标
+        // lyric显示在屏幕上，translate的距离一定为复
+        // 向右滑动的时候，deltaX为正，left为-window.innerHeight
+        // 向左滑动的时候，deltaX为负，left为0
+        // 这点的逻辑有点绕
+        let offsetWidth = Math.min(0, Math.max(left + deltaX, -window.innerWidth));
+        // 歌词区域占领屏幕的比例
+        this.touchData.percent = Math.abs(offsetWidth / window.innerWidth);
+        // this.$refs.middleR是scroll组件，不是dom元素，需要使用$el将DOM元素取出来
+        this.$refs.middleR.$el.style[transform] = `translate3d(${offsetWidth}px,0,0)`;
+        this.$refs.middleR.$el.style[transitionDuration] = 0;
+        // this.$refs.middleL就是个div，因此不需要使用$el再取出dom元素
+        this.$refs.middleL.style['opacity'] = 1 - this.touchData.percent;
+        this.$refs.middleL.style[transitionDuration] = 0;
+        e.preventDefault();
+      }
+    },
+    middleTouchEnd(e) {
+      if (!this.touchData.initiated) {
+        return;
+      }
+      // 为true说明是左右滑动
+      if (!this.touchData.moved) {
+        return;
+      }
+      let offsetWidth;
+      let opacity;
+      this.touchData.initiated = false;
+      if (this.currentShow === 'cd') {
+        if (this.touchData.percent > 0.1) {
+          offsetWidth = -window.innerWidth;
+          opacity = 0;
+          this.currentShow = 'lyric';
+        } else {
+          offsetWidth = 0;
+          opacity = 1;
+        }
+      } else {
+        if (this.touchData.percent < 0.9) {
+          offsetWidth = 0;
+          opacity = 1;
+          this.currentShow = 'cd';
+        } else {
+          offsetWidth = -window.innerWidth;
+          opacity = 0;
+        }
+      }
+      // this.$refs.middleR是scroll组件，不是dom元素，需要使用$el将DOM元素取出来
+      this.$refs.middleR.$el.style[transform] = `translate3d(${offsetWidth}px,0,0)`;
+      this.$refs.middleR.$el.style[transitionDuration] = '300ms';
+      // this.$refs.middleL就是个div，因此不需要使用$el再取出dom元素
+      this.$refs.middleL.style['opacity'] = opacity;
+      this.$refs.middleL.style[transitionDuration] = '300ms';
+    },
     ...mapMutations({
       setFullscreen: types.SET_FULLSCREEN,
       setPlaying: types.SET_PLAYING,
@@ -381,8 +475,11 @@ export default {
             top: 80px;
             left: 0;
             bottom: 170px;
+            white-space: nowrap;
         }
+        /*middle-l,以及middle-r都需要定义为display:inline-block；以便二者能够左右并排*/
         .middle-l {
+            display: inline-block;
             position: relative;
             text-align: center;
             width: 100%;
@@ -416,14 +513,14 @@ export default {
         }
         /*歌词部分的布局*/
         .middle-r {
-            position: absolute;
-            top: 0;
-            left: 10%;
-            width: 80%;
+            display: inline-block;
+            width: 100%;
             height: 100%;
             overflow: hidden;
             text-align: center;
             .line {
+                width: 80%;
+                margin: 0 auto;
                 line-height: 32px;
                 height: 32px;
                 font-size: $font-size-medium;
