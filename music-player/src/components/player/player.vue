@@ -8,12 +8,13 @@
       <h2 class="subtitle">{{currentSong.singer}}</h2>
       </div>
       <!--左侧显示cd，右侧显示歌词,通过监听其touch事件达到这一效果-->
-      <div class="middle" @touchstart.stop="middleTouchStart" @touchend.stop="middleTouchEnd" @touchmove.stop="middleTouchMove">
-      <div class="middle-l cd" ref="middleL"><div class="cd-border" ref="cd" :class="[playing? 'play': 'pause']"><img :src="currentSong.image" class="cd-image" alt=""></div><div class="single-line">乌云在我们心中留下阴影</div></div>
+      <!---->
+      <div class="middle" @touchstart="middleTouchStart" @touchend="middleTouchEnd" @touchmove="middleTouchMove">
+      <div class="middle-l cd" ref="middleL"><div class="cd-border" ref="cd" :class="[playing? 'play': 'pause']"><img :src="currentSong.image" class="cd-image" alt=""></div><div class="single-line">{{curLyricTxt}}</div></div>
       <scroll class="middle-r" :data="currentLyric.lines" v-if="currentLyric&&currentLyric.lines" ref="middleR">
         <!--歌词可以上下滑动-->
           <div class="lyric-wrapper" v-if="currentLyric&&currentLyric.lines">
-            <p v-for="(line,index) in currentLyric.lines"  :class="[index === currentLineNum.lineNum? 'current': '', 'line']">{{line.txt}}</p>
+            <p v-for="(line,index) in currentLyric.lines"   ref="lyricLine" :class="[index === currentLineNum? 'current': '', 'line']">{{line.txt}}</p>
           </div>
       </scroll>
     </div>
@@ -95,7 +96,8 @@ export default {
       curTime: 0,
       currentLyric: null, // 当前歌曲的歌词对象
       currentLineNum: 0, // 当前播放到的歌词行数
-      currentShow: 'cd' // 显示的是cd还是歌词
+      currentShow: 'cd', // 显示的是cd还是歌词
+      curLyricTxt: '' // 当前播放的歌词
     }
   },
   computed: {
@@ -131,6 +133,10 @@ export default {
       this.$refs.audio.currentTime = this.curTime;
       if (!this.playing) {
         this.togglePlay();
+      }
+      // 歌词的播放进度也需要改变,单位是ms
+      if (this.currentLyric) {
+        this.currentLyric.seek(this.curTime * 1000);
       }
     },
     // 以下几个方法用于实现动画效果
@@ -211,6 +217,9 @@ export default {
       this.setPlaying(!this.playing);
       // 拒绝命令式代码，通过判断this.playing的真假，决定是播放还是暂停
       // 通过下面watchplaying来决定
+      if (this.currentLyric) {
+        this.currentLyric.togglePlay();
+      }
     },
     // 上一首歌
     prevSong: function() {
@@ -276,6 +285,10 @@ export default {
       this.$refs.audio.currentTime = 0;
       this.$refs.audio.play();
       this.setPlaying(true);
+      if (this.currentLyric) {
+        // 循环播放下，歌词也需要回到一开始
+        this.currentLyric.seek(0);
+      }
     },
     // 切换播放模式，一共有三种
     // 0:顺序，1：循环；2：随机
@@ -307,13 +320,28 @@ export default {
         if (this.playing) {
           this.currentLyric.play();
         }
+      }).catch(() => {
+        // 如果获取歌词出错
+        this.currentLyric = null;
+        this.currentLineNum = 0;
       });
     },
     // 歌词对象初始化构造函数中传入的构造函数
     // 在播放到每一句歌词的时候调用
     // 需要做的事情，高亮当前歌词行
-    lyricHandler(lineNum, lineTxt) {
+    lyricHandler({
+      lineNum,
+      txt
+    }) {
       this.currentLineNum = lineNum;
+      this.curLyricTxt = txt;
+      // 在这里处理歌词的滚动
+      if (lineNum > 5) {
+        let lineEl = this.$refs.lyricLine[lineNum - 5];
+        this.$refs.middleR.scrollToElement(lineEl, 1000);
+      } else {
+        this.$refs.middleR.scrollTo(0, 0, 1000);
+      }
     },
     // 以下三个方法监听滑动事件，实现cd和歌词区域的切换
     // 监听移动端的滑动事件，在zepto下有swipeLeft,swipeRight等方法
@@ -337,9 +365,6 @@ export default {
     middleTouchMove(e) {
       if (!this.touchData.initiated) {
         return;
-      }
-      if (!this.touchData.moved) {
-        this.touchData.moved = true;
       }
       let touch = e.changedTouches[0];
       let deltaX = touch.pageX - this.touchData.startX;
@@ -366,6 +391,7 @@ export default {
         // this.$refs.middleL就是个div，因此不需要使用$el再取出dom元素
         this.$refs.middleL.style['opacity'] = 1 - this.touchData.percent;
         this.$refs.middleL.style[transitionDuration] = 0;
+        // 在touchmove中添加preventDefault()会阻止浏览器默认的滚动事件
         e.preventDefault();
       }
     },
@@ -422,6 +448,10 @@ export default {
         return;
       }
       console.log('currentSong change', this.currentSong);
+      // 歌词也需要停止
+      if (this.currentLyric) {
+        this.currentLyric.stop();
+      }
       this.$nextTick(function() {
         this.$refs.audio.play();
         this.getLyric();
