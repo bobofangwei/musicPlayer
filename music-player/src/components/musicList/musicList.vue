@@ -23,6 +23,7 @@
 import scroll from '@/base/scroll.vue';
 import loading from '@/base/loading/loading.vue';
 import songlist from '@/base/songlist.vue';
+import miniPlayerMixin from '@/base/mixin/miniPlayerMixin';
 import {
   prefix
 } from '@/util/dom.js';
@@ -32,7 +33,9 @@ import {
 const transform = prefix('transform');
 const backdrop = prefix('backdrop-filter');
 const RESERVED_HEIGHT = 30; // 歌曲列表能够滚动上移的最大高度
+const MINIPLAYER_HEIGHT = '60px'; // 底部迷你播放器的高度
 export default {
+  mixins: [miniPlayerMixin],
   components: {
     scroll,
     loading,
@@ -83,6 +86,13 @@ export default {
     // 随机播放所有歌曲
     randomPlayAll() {
       this.randomPlayAll(this.songs);
+    },
+    // 实现mixin中的方法，完成播放器的底部适配
+    handleMiniPlayer(playList) {
+      const bottom = playList && playList.length > 0 ? MINIPLAYER_HEIGHT : '0';
+      this.$refs.scroll.$el.style.bottom = bottom;
+      // 记得列表的再次刷新调用
+      this.$refs.scroll.refresh();
     },
     ...mapActions([
       'selectSong',

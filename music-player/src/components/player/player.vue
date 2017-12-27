@@ -1,5 +1,6 @@
 <template lang="html">
   <div class="player" v-show="playList.length>0">
+    <!--同时使用了css动画和js动画-->
     <transition name="normal" @enter="enter" @after-enter="afterEnter" @leave="leave" @after-leave="afterLeave">
       <div class="normal-player" v-show="fullScreen">
       <div class="top">
@@ -173,7 +174,7 @@ export default {
     afterEnter: function(el) {
       keyframeAnimation.unregisterAnimation('move');
       // 清空animation
-      this.$refs.cd.style.animation = '';
+      this.$refs.cd.style = '';
     },
     leave: function(el, done) {
       // 从样式表中的样式，向其他样式动画，只需要借助css3的transform,transition即可
@@ -316,7 +317,7 @@ export default {
     getLyric() {
       this.currentSong.getSongLyric().then((lyric) => {
         this.currentLyric = new Lyric(lyric, this.lyricHandler);
-        console.log('lyricObject', this.currentLyric);
+        // console.log('lyricObject', this.currentLyric);
         if (this.playing) {
           this.currentLyric.play();
         }
@@ -675,6 +676,7 @@ export default {
             transform: translate3d(0,100px,0);
         }
     }
+    /*头部下降，底部上升的感觉*/
     .normal-enter-active,
     .normal-leave-active {
         transition: all 0.4s;

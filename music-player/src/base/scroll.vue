@@ -69,8 +69,8 @@ export default {
       }
       this.scroll = new BScroll(this.$refs.wrapper, {
         probeType: this.probeType,
-        click: this.click,
-        scrollX: this.scrollX
+        click: this.click, // better-scroll组件默认会组织浏览器原生的click事件，当该属性设置为true，会派发一个click事件，并且派发的event参数有一个私有属性：_constructed,值为true
+        scrollX: this.scrollX // 是否开启横向滚动
       });
       // 是否派发滚动事件
       if (this.listenScroll) {
@@ -118,8 +118,8 @@ export default {
     }
   },
   watch: {
-    data: function() {
-      console.log('refresh');
+    data: function(newVal) {
+      console.log('refresh', newVal);
       setTimeout(() => {
         this.refresh();
       }, this.refreshDelay);
@@ -130,5 +130,4 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-
 </style>

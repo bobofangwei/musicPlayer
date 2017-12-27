@@ -6,7 +6,7 @@ import store from './store';
 import fastclick from 'fastclick'
 import '@/common/scss/index.scss'
 import VueLazyload from 'vue-lazyload';
-Vue.config.productionTip = false
+Vue.config.productionTip = true
 // 解决移动端点击300ms的延时问题,使用这个库之后，点击将没有延时
 fastclick.attach(document.body)
 /* eslint-disable no-new */

@@ -2,14 +2,14 @@
   <div class="recommend">
   <scroll ref="scroll" class="dic-scroll" :data="dicData">
     <div>
-      <div class="slider-wrapper" v-if="sliderData.length">
-        <slider>
+      <div class="slider-wrapper">
+        <slider1 v-if="sliderData&&sliderData.length>0">
         <div v-for="item in sliderData">
           <a :href="item.linkUrl">
             <img :src="item.picUrl">
           </a>
         </div>
-        </slider>
+      </slider1>
       </div>
       <div class="dic-title">热门歌单推荐</div>
       <ul class="dic-list">
@@ -24,7 +24,7 @@
         </li>
       </ul>
   </div>
-  </scroll>
+</scroll>
     <div class="loadding-wrapper" v-show="!dicData.length">
       <loading></loading>
     </div>
@@ -36,9 +36,9 @@ import {
   getRecommend,
   getDiscList
 } from '@/api/recommend.js';
-import slider from '@/base/slider.vue';
 import loading from '@/base/loading/loading.vue';
 import scroll from '@/base/scroll.vue';
+import slider1 from '@/base/slider1.vue';
 export default {
   data: function() {
     return {
@@ -54,17 +54,19 @@ export default {
     // 获取歌单从qq音乐的所有歌单接口获取，方式是jsonp
     getDiscList().then((res) => {
       this.dicData = res.data.list;
-      this.$nextTick(function() {
-        this.$refs.scroll.refresh();
-      });
+      // 赋值之后scroll组件的data即发生变化，会在watch中调用refresh，按理说这里无需再次调用
+      // this.$nextTick(function() {
+      //   console.log('prarent refresh');
+      //   this.$refs.scroll.refresh();
+      // });
       // console.log('res', res.data);
     });
   },
   methods: {},
   components: {
-    slider,
     loading,
-    scroll
+    scroll,
+    slider1
   }
 }
 </script>
@@ -88,7 +90,7 @@ export default {
         line-height: 40px;
     }
     .dic-list {
-      margin-top: -15px;
+        margin-top: -15px;
     }
     .dic-item {
         display: flex;
