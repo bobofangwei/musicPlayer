@@ -27,6 +27,12 @@ import loading from '@/base/loading/loading.vue';
 // 区域标题的高度
 const TITLE_HEIGHT = 30;
 const ANCHOR_HEIGHT = 18;
+
+// 左右列表联动的效果
+// 在scroll中派发scroll事件，时刻记录滚动高度scrollY
+// 使用一个数组记录每个区域距离顶部的高度，watch data的变化，每一次数据发生变化的时候都重新计算
+// 计算scrollY落在哪一个区间，从而计算处currentIndex
+// 此外，还有一个动画效果的实现经验值得学习，即标题向上推的效果实现
 export default {
   props: {
     data: {
@@ -105,6 +111,7 @@ export default {
     }
   },
   watch: {
+    // 和传入数据相关的，大多在watch而非初始化created的时候计算
     data: function() {
       setTimeout(() => {
         this.calHeight();
@@ -127,7 +134,7 @@ export default {
         if (-newY >= this.heights[i] && -newY < this.heights[i + 1]) {
           this.currentIndex = i;
           // console.log('currentINdex', this.currentIndex);
-          // 计算距离当前区域下边沿的距离
+          // 计算距离当前顶部第一个分区的底部距离fixTitle顶部的距离
           this.diff = this.heights[i + 1] + newY;
           return;
         }

@@ -36,6 +36,7 @@ export default {
     getSingerList: function() {
       getSingerList().then((res) => {
         if (res.code === 0) {
+          // 因为scroll组件要求的数据为数组格式，这里进行了一系列的处理
           this.singers = this._normalizeSingerData(res.data.list);
           this.$nextTick(() => {
             this.$refs.scroll.refresh();
