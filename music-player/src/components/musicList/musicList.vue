@@ -7,7 +7,7 @@
       <h2 class="title">{{title}}</h2>
       <div class="play-wrapper" ref="playWrapper">
         <i class="icon-play"></i>
-        <span class="play-text" @click="randomPlayAll">随机播放全部</span>
+        <span class="play-text" @click.stop.prevent="randomPlay">随机播放全部</span>
       </div>
       <div class="filter" ref="filter"></div>
     </div>
@@ -20,6 +20,9 @@
 </template>
 
 <script>
+// 这个页面的难点
+// 1.歌曲列表上拉和下滑的时候，实现类似原生ios的效果，借助于多个dom元素来完成
+// 2.和vux相关的内容实现，诸如随机播放音乐，点击开始播放音乐等等
 import scroll from '@/base/scroll.vue';
 import loading from '@/base/loading/loading.vue';
 import songlist from '@/base/songlist.vue';
@@ -78,13 +81,15 @@ export default {
       // 2.设置播放器的currentIndex
       // 3.设置播放器的fullScreen,以及playing状态
       // 更改vuex中的状态需要用到mutations,上述动作都统一封装到action中完成
+      // 本来这里应该打开歌曲播放的页面，这里通过设置fullscreen来检测实现,player本身定义在首页app.vue中
       this.selectSong({
         list: this.songs,
         index: index
       });
     },
     // 随机播放所有歌曲
-    randomPlayAll() {
+    randomPlay() {
+      console.log('随机播放全部');
       this.randomPlayAll(this.songs);
     },
     // 实现mixin中的方法，完成播放器的底部适配
@@ -132,6 +137,7 @@ export default {
         photoDom.style.paddingTop = 0;
         this.$refs.playWrapper.style.display = 'none';
       } else {
+        // 恢复正常样式
         photoDom.style.zIndex = 0;
         photoDom.style.paddingTop = '70%';
         photoDom.style.height = '';
@@ -187,8 +193,10 @@ export default {
             width: 100%;
             left: 0;
         }
+        /*设置其z-index，防止点击的时候被layer遮挡*/
         .play-wrapper {
             position: absolute;
+            z-index: 10;
             bottom: 20px;
             color: $color-theme;
             text-align: center;
@@ -214,12 +222,14 @@ export default {
         }
     }
     /*该dom元素主要用于实现当歌曲列表向上滚动的时候，充当超出overflow部分的背景层*/
+    /*虽然高度等于整个屏幕的高度，但是竖直方向上的起始位置，一开始是个歌曲列表平齐的*/
     .bg-layer {
         position: relative;
         height: 100%;
         width: 100%;
         background-color: $color-background;
     }
+    /*scroll的top值在mounted钩子里由js代码来控制的*/
     .scroll {
         position: absolute;
         bottom: 0;

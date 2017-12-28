@@ -1,6 +1,6 @@
 <template lang="html">
 <transition name="slide">
-  <music-list :title="title" :songs="songs" :bg-image="bgImage" v-if="songs.length"></music-list>
+  <music-list :title="title" :songs="songs" :bg-image="bgImage" v-if="songs && songs.length"></music-list>
 </transition>
 </template>
 
@@ -28,6 +28,7 @@ export default {
   methods: {
     getSingerSongs: function() {
       if (!this.singer.id) {
+        // 返回歌手列表页面
         this.$router.push({
           path: '/singer'
         });

@@ -17,6 +17,7 @@ var Song = {
     this.url = url;
   },
   initWidthMusicData: function(musicData) {
+    // 歌曲图片，歌曲的多媒体地址，以及歌手列表需要进一步的处理
     let image = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000' + musicData.albummid + '.jpg?max_age=2592000';
     let url = `http://ws.stream.qqmusic.qq.com/${musicData.songid}.m4a?fromtag=46`;
     let singers = musicData.singer.map((item) => {
