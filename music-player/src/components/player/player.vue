@@ -144,7 +144,7 @@ export default {
     // 以下几个方法用于实现动画效果
     // 在全屏播放器展开的时候，mini播放器的cd类似于飞到全屏播放器cd的位置
     enter: function(el, done) {
-      console.log('cd enter');
+      // console.log('cd enter');
       // 从其他样式向样式表中配置的最终样式变化
       // 借助于keyframeAnimation
       const {
@@ -174,13 +174,13 @@ export default {
       keyframeAnimation.runAnimation(this.$refs.cd, 'move', done);
     },
     afterEnter: function(el) {
-      console.log('cd afterEnter');
+      // console.log('cd afterEnter');
       keyframeAnimation.unregisterAnimation('move');
       // 清空animation
       this.$refs.cd.style.animation = '';
     },
     leave: function(el, done) {
-      console.log('leave');
+      // console.log('leave');
       // 使用教程里的transition和transform发现会出现transitionEnd以及afterLeave不能监听到的问题，
       // 因此这里依旧尝试使用keyFrameAnimation来解决
       const {
@@ -208,7 +208,7 @@ export default {
     },
     afterLeave: function(el) {
       keyframeAnimation.unregisterAnimation('leaveAnim');
-      console.log('afterLeave');
+      // console.log('afterLeave');
     },
     // leave: function(el, done) {
     //   console.log('cd leave');
@@ -319,6 +319,10 @@ export default {
       if (this.playing) {
         this.togglePlay();
       }
+      if (this.currentLyric) {
+        this.currentLyric.stop();
+      }
+      this.currentLyric = null;
     },
     // audio元素自带的事件，诸如canplay,ended,error,timeupdate等
     audioUpdateTime: function(e) {
