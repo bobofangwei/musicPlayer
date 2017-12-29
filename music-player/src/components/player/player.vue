@@ -130,6 +130,9 @@ export default {
     },
     // progressBar触发的percentChange事件传递到父组件
     percentChange: function(curPercent) {
+      if (!curPercent) {
+        return;
+      }
       this.curTime = (+this.currentSong.duration) * curPercent;
       // 改变歌曲进度
       this.$refs.audio.currentTime = this.curTime;
@@ -323,6 +326,7 @@ export default {
         this.currentLyric.stop();
       }
       this.currentLyric = null;
+      this.currentLineNum = 0;
     },
     // audio元素自带的事件，诸如canplay,ended,error,timeupdate等
     audioUpdateTime: function(e) {

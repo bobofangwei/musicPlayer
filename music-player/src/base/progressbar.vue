@@ -1,14 +1,14 @@
 <template lang="html">
   <div class="progress-bar">
-    <span class="time cur-time">{{timeFormat(curTime)}}</span>
+    <span class="time cur-time">{{curTime|timeFormat}}</span>
     <!--组织默认事件，防止拖动浏览器-->
-    <div class="bar-outter"  ref="outterBar" @click="progressClick" @touchstart.prevent="progressTouchStart"  @touchend.prevent="progressTouchEnd" @touchmove="progressTouchMove">
+    <div class="bar-outter"  ref="outterBar"  @touchstart.prevent="progressTouchStart"  @touchend.prevent="progressTouchEnd" @touchmove="progressTouchMove">
       <div class="bar-inner" ref="innerBar" :style="{width:percent*100+'%'}">
         <span class="bar-circle">
         </span>
       </div>
     </div>
-    <span class="time all-time">{{timeFormat(totalTime)}}</span>
+    <span class="time all-time">{{curTime|timeFormat}}</span>
   </div>
 </template>
 
@@ -36,9 +36,19 @@ export default {
     this.touch = {};
   },
   mounted() {},
+  filters: {
+    timeFormat(seconds) {
+      seconds = Math.round(seconds);
+      let minite = Math.floor(seconds / 60);
+      let sec = seconds % 60;
+      return paddingStart('' + minite, 2, '0') + ':' + paddingStart('' + sec, 2, '0');
+    }
+  },
   methods: {
     // 进度条的拖拽事件
     // 经过测试，在click事件中，会先后触发touchStart,touchEnd
+    // 关于touchStart,touchMove,touchEnd,click之间的关系
+    // 这篇博客讲的很透彻：https://www.jianshu.com/p/dc3bceb10dbb
     progressTouchStart(e) {
       // console.log('touchStart');
       this.touch.initiated = true;
@@ -50,9 +60,11 @@ export default {
       // console.log('touchEnd');
       this.touch.initiated = false;
       // 结束的时候，触发百分比改变事件
+      this._refreshWidth(e.changedTouches[0].pageX - this.progressBarLeft);
       this.$emit('percentChange', this.touch.curPercent);
     },
     progressTouchMove(e) {
+      // console.log('touchMove');
       if (!this.touch.initiated) {
         return;
       }
@@ -65,19 +77,19 @@ export default {
       curPercent = curPercent > 1 ? 1 : (curPercent < 0 ? 0 : curPercent);
       this.touch.curPercent = curPercent;
       this.$refs.innerBar.style.width = curPercent * 100 + '%';
-    },
-    progressClick(e) {
-      // console.log('click', e.pageX);
-      this._refreshWidth(e.pageX - this.progressBarLeft);
-      this.$emit('percentChange', this.touch.curPercent);
-    },
-    // 将秒转换为分：秒的形式
-    timeFormat(seconds) {
-      seconds = Math.round(seconds);
-      let minite = Math.floor(seconds / 60);
-      let sec = seconds % 60;
-      return paddingStart('' + minite, 2, '0') + ':' + paddingStart('' + sec, 2, '0');
     }
+    // progressClick(e) {
+    //   console.log('click', e.pageX);
+    //   this._refreshWidth(e.pageX - this.progressBarLeft);
+    //   this.$emit('percentChange', this.touch.curPercent);
+    // },
+    // 将秒转换为分：秒的形式
+    // timeFormat(seconds) {
+    //   seconds = Math.round(seconds);
+    //   let minite = Math.floor(seconds / 60);
+    //   let sec = seconds % 60;
+    //   return paddingStart('' + minite, 2, '0') + ':' + paddingStart('' + sec, 2, '0');
+    // }
   }
 }
 </script>
