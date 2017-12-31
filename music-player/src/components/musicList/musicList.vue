@@ -94,10 +94,13 @@ export default {
     },
     // 实现mixin中的方法，完成播放器的底部适配
     handleMiniPlayer(playList) {
+      // console.log('musicList,handleMiniPlayer', this.playList.length > 0);
       const bottom = playList && playList.length > 0 ? MINIPLAYER_HEIGHT : '0';
       this.$refs.scroll.$el.style.bottom = bottom;
       // 记得列表的再次刷新调用
-      this.$refs.scroll.refresh();
+      this.$nextTick(() => {
+        this.$refs.scroll.refresh();
+      });
     },
     ...mapActions([
       'selectSong',

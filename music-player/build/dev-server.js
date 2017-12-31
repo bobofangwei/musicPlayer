@@ -63,6 +63,23 @@ apiRouter.get('/getLyric', (req, res) => {
     res.end(err);
   });
 });
+// 获取歌单详情的接口
+apiRouter.get('/getDissDetail', (req, res) => {
+  const url = 'https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg';
+  // console.log('req.headers', req.headers);
+  // console.log('req.query', req.query);
+  return axios.get(url, {
+    headers: {
+      'authority': 'c.y.qq.com',
+      'referer': 'https://y.qq.com/n/yqq/playlist/' + req.query.dissid + '.html'
+    },
+    params: req.query
+  }).then((resData) => {
+    res.end(resData.data);
+  }).catch((err) => {
+    res.end(err);
+  });
+});
 // 其他接口的处理
 apiRouter.get('*', (req, response) => {
   // console.log(req);

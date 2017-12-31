@@ -1,6 +1,6 @@
 <template lang="html">
-  <div class="recommend">
-  <scroll ref="scroll" class="dic-scroll" :data="dicData">
+  <div class="recommend" ref="recommend">
+    <scroll ref="scroll" class="dic-scroll" :data="dicData">
     <div>
       <div class="slider-wrapper">
         <slider1 v-if="sliderData&&sliderData.length>0">
@@ -13,7 +13,7 @@
       </div>
       <div class="dic-title">热门歌单推荐</div>
       <ul class="dic-list">
-        <li class="dic-item" v-for="item in dicData">
+        <li class="dic-item" v-for="item in dicData" @click="selectDiss(item)">
           <div class="dic-icon">
             <img v-lazy="item.imgurl" alt="">
           </div>
@@ -24,11 +24,13 @@
         </li>
       </ul>
   </div>
-</scroll>
+    </scroll>
     <div class="loadding-wrapper" v-show="!dicData.length">
       <loading></loading>
     </div>
+    <router-view></router-view>
   </div>
+
 </template>
 
 <script>
@@ -36,10 +38,16 @@ import {
   getRecommend,
   getDiscList
 } from '@/api/recommend.js';
+import {
+  mapMutations
+} from 'vuex';
 import loading from '@/base/loading/loading.vue';
 import scroll from '@/base/scroll.vue';
 import slider1 from '@/base/slider1.vue';
+import miniPlayerMixin from '@/base/mixin/miniPlayerMixin';
+const MINIPLAYER_HEIGHT = '60px'; // 底部迷你播放器的高度
 export default {
+  mixins: [miniPlayerMixin],
   data: function() {
     return {
       sliderData: [],
@@ -62,7 +70,28 @@ export default {
       // console.log('res', res.data);
     });
   },
-  methods: {},
+  methods: {
+    selectDiss(item) {
+      this.setDiss(item);
+      console.log('当前歌单：', this.$store.state.diss);
+      this.$router.push({
+        path: `/recommend/${item.dissid}`
+      });
+    },
+    handleMiniPlayer(playList) {
+      // console.log('musicList,handleMiniPlayer', this.playList.length > 0);
+      const bottom = playList && playList.length > 0 ? MINIPLAYER_HEIGHT : '0';
+      // this.$refs.scroll.$el.style.bottom = bottom;
+      this.$refs.recommend.style.bottom = bottom;
+      // 记得列表的再次刷新调用
+      this.$nextTick(() => {
+        this.$refs.scroll.refresh();
+      });
+    },
+    ...mapMutations({
+      'setDiss': 'SET_DISS'
+    })
+  },
   components: {
     loading,
     scroll,
@@ -79,7 +108,10 @@ export default {
     top: 88px;
     bottom: 0;
     .dic-scroll {
-        height: 100%;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
         overflow: hidden;
     }
     .dic-title {

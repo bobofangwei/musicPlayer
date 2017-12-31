@@ -24,9 +24,11 @@
 <script>
 import scroll from '@/base/scroll.vue';
 import loading from '@/base/loading/loading.vue';
+import miniPlayerMixin from '@/base/mixin/miniPlayerMixin';
 // 区域标题的高度
 const TITLE_HEIGHT = 30;
 const ANCHOR_HEIGHT = 18;
+const MINIPLAYER_HEIGHT = '60px'; // 底部迷你播放器的高度
 
 // 左右列表联动的效果
 // 在scroll中派发scroll事件，时刻记录滚动高度scrollY
@@ -40,6 +42,7 @@ export default {
       default: []
     }
   },
+  mixins: [miniPlayerMixin],
   components: {
     scroll,
     loading
@@ -108,6 +111,16 @@ export default {
     },
     selectItem: function(item) {
       this.$emit('selectItem', item);
+    },
+    // 迷你播放器出现时的高度调整问题
+    handleMiniPlayer(playList) {
+      // console.log('musicList,handleMiniPlayer', this.playList.length > 0);
+      const bottom = playList && playList.length > 0 ? MINIPLAYER_HEIGHT : '0';
+      this.$refs.scroll.$el.style.bottom = bottom;
+      // 记得列表的再次刷新调用
+      this.$nextTick(() => {
+        this.$refs.scroll.refresh();
+      });
     }
   },
   watch: {
