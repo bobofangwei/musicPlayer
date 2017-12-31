@@ -14,10 +14,16 @@
             <div class="cd-border" ref="cd" :class="[playing? 'play': 'pause']"><img :src="currentSong.image" class="cd-image" alt=""></div>
             <div class="single-line">{{curLyricTxt}}</div>
           </div>
-          <scroll class="middle-r" :data="currentLyric.lines" v-if="currentLyric&&currentLyric.lines" ref="middleR">
+          <!--之间曾把v-if=currentLyric&&currentLyric.lines放置在scroll元素上，发现在歌词界面上下切换时候出错-->
+          <!--究其原因，上下切换时候currentLyric有一个从null到赋值的过程，scroll元素会重新渲染，原来touch事件中加上的transition,transform自然也就没有-->
+          <!--如果v-if放置在lyric-wrapper中也不妥，因为需要始终保证scroll有一个子元素-->
+          <!--因此在lyric-wrapper中再嵌套一个div来解决这个问题-->
+          <scroll class="middle-r" :data="currentLyric&&currentLyric.lines" ref="middleR">
             <!--歌词可以上下滑动-->
-              <div class="lyric-wrapper" v-if="currentLyric&&currentLyric.lines">
-                <p v-for="(line,index) in currentLyric.lines"   ref="lyricLine" :class="[index === currentLineNum? 'current': '', 'line']">{{line.txt}}</p>
+              <div class="lyric-wrapper">
+                <div v-if="currentLyric">
+                  <p v-for="(line,index) in currentLyric.lines"   ref="lyricLine" :class="[index === currentLineNum? 'current': '', 'line']">{{line.txt}}</p>
+                </div>
               </div>
           </scroll>
         </div>
@@ -31,9 +37,9 @@
           </div>
           <div class="ope-wrapper">
             <div class="icon"><i :class="modeClass" @click="changePlayMode"></i></div>
-            <div class="icon"><i class="icon-prev" @click="prevSong" :class="[audioReady?'':'disable']"></i></div>
+            <div class="icon"><i class="icon-prev" @click="prevSong" :class="[audioReady||audioError?'':'disable']"></i></div>
             <div class="icon"><i :class="[playing? 'icon-pause': 'icon-play', audioReady?'':'disable']" @click="togglePlay"></i></div>
-            <div class="icon"><i class="icon-next" @click="nextSong" :class="[audioReady?'':'disable']"></i></div>
+            <div class="icon"><i class="icon-next" @click="nextSong" :class="[audioReady||audioError?'':'disable']"></i></div>
             <div class="icon"><i class="icon-not-favorite"></i></div>
           </div>
         </div>
@@ -95,6 +101,7 @@ export default {
   data: function() {
     return {
       audioReady: false, // 标记auido元素是否准备好播放
+      audioError: false,
       curTime: 0,
       currentLyric: null, // 当前歌曲的歌词对象
       currentLineNum: 0, // 当前播放到的歌词行数
@@ -133,12 +140,14 @@ export default {
       if (!curPercent) {
         return;
       }
+      // 如果歌曲的音频文件获取由误，拖动进度条无反应
+      if (this.audioError) {
+        return;
+      }
       this.curTime = (+this.currentSong.duration) * curPercent;
       // 改变歌曲进度
+      // 在暂停状况下拖动进度条，应当依旧暂停
       this.$refs.audio.currentTime = this.curTime;
-      if (!this.playing) {
-        this.togglePlay();
-      }
       // 歌词的播放进度也需要改变,单位是ms
       if (this.currentLyric) {
         this.currentLyric.seek(this.curTime * 1000);
@@ -262,6 +271,10 @@ export default {
     },
     // 切换歌曲的播放与暂停
     togglePlay: function(e) {
+      // 只有在歌曲音频资源没有问题的情况下，才能点击播放/暂停按钮
+      if (!this.audioReady) {
+        return;
+      }
       this.setPlaying(!this.playing);
       // 拒绝命令式代码，通过判断this.playing的真假，决定是播放还是暂停
       // 通过下面watchplaying来决定
@@ -270,9 +283,14 @@ export default {
       }
     },
     // 上一首歌
+    // 播放策略是:
+    // 如果在播放状态上下切换，那么上一首/下一首从头开始播放
+    // 如果在暂停状态切换，那么上一首/下一首依旧从头开始播放
+    // 如果在暂停状态拖动进度条，那么拖动之后依旧是暂停状态
     prevSong: function() {
       console.log('prev audioReady', this.audioReady);
-      if (!this.audioReady) {
+      // 在上一次歌曲下载未就绪的情况下（包括audio的error事件触发）禁止点击
+      if (!this.audioReady && !this.audioError) {
         return;
       }
       let index = this.currentIndex - 1;
@@ -280,15 +298,12 @@ export default {
         index = this.playList.length - 1;
       }
       this.setCurrentindex(index);
-      // 如果在暂停状态下点击上一首或者下一首，那么上一首或者下一首自动开始播放
-      if (!this.playing) {
-        this.togglePlay();
-      }
       this.audioReady = false;
+      this.audioError = false;
     },
     // 下一首歌
     nextSong: function() {
-      if (!this.audioReady) {
+      if (!this.audioReady && !this.audioError) {
         return;
       }
       let index = this.currentIndex + 1;
@@ -297,11 +312,9 @@ export default {
       }
       // 下面的操作会导致currentSong发生变化，触发currentSong的watch事件
       this.setCurrentindex(index);
-      if (!this.playing) {
-        this.togglePlay();
-      }
       // 触发歌曲改变
       this.audioReady = false;
+      this.audioError = false;
     },
     // audio Ready事件的监听函数
     // 当audio的src属性发生变化时，会检测这一事件
@@ -309,6 +322,7 @@ export default {
       console.log('audioReady');
       // 防止上一首，下一首快速切换报错
       this.audioReady = true;
+      // this.audioError = false;
     },
     // audio Error事件的监听函数
     audioErrorHandler: function() {
@@ -316,16 +330,16 @@ export default {
       console.log('audioError');
       // 如果歌曲的url有问题，或者网络有问题，会触发auido的error的事件
       // 此时audioReady一直不会置为true,需要手动设置
-      this.audioReady = true;
+      this.audioError = true;
+      // this.audioReady = false;
       // 如果url有误，应当停止播放,并在原来显示当前播放歌词的地方，显示一个出错的提示
       this.curLyricTxt = '歌曲资源获取不到';
-      if (this.playing) {
-        this.togglePlay();
-      }
+      this.setPlaying(false);
+      // 有可能出现这种情况，歌词的音频资源虽然请求不到，但是歌词资源却可以请求道
       if (this.currentLyric) {
         this.currentLyric.stop();
       }
-      this.currentLyric = null;
+      // this.currentLyric = null;
       this.currentLineNum = 0;
     },
     // audio元素自带的事件，诸如canplay,ended,error,timeupdate等
@@ -378,6 +392,8 @@ export default {
     getLyric() {
       this.currentSong.getSongLyric().then((lyric) => {
         this.currentLyric = new Lyric(lyric, this.lyricHandler);
+        console.log('get lyric success', this.currentLyric);
+        // 显示歌词的scroll应当刷新
         // console.log('lyricObject', this.currentLyric);
         if (this.playing) {
           this.currentLyric.play();
@@ -414,7 +430,9 @@ export default {
     // distanceY=endY-startY,如果为正的话向下滑动，为负的话向上滑动
     // 因为一般不会是正上正下的滑动，因此还需要比较absolute(distanceX)与ansolute(distanceY)的大小，前者大为左右滑动，后者大为上下滑动
     // 但是上面有个问题，在andoid下，滑动事件只会触发touchStart和touchMove，在手指离开的时候，并不会触发touchEnd事件，只有在touchmove的默认事件取消之后，才会触发touchEnd事件
-    // 所以，还需要对touchmove事件进行处理，思路是在用户刚开始滑动（第一次)的时候，判断用户是上下滑动，还是左右滑动，判断方法同上，并调用对应的e.prenventDefault()操作
+    // 所以，还需要对touchmove事件进行处理，思路是在用户刚开始滑动（第一次)的时候，判断用户是上下滑动，还是左右滑动，判断方法同上
+    // touchStart或者touchEnd中preventDefault会组织click事件触发,一般touchMove和click事件时互斥的
+    // touchMove中preventDefault会阻止浏览器默认的滚动行为
     middleTouchStart(e) {
       // 该变量用来记录一次完整的滑动事件
       this.touchData.initiated = true;
@@ -503,7 +521,7 @@ export default {
     })
   },
   watch: {
-    // 在currentsong发生变化的时候，播放播放器
+    // 在currentsong发生变化(即点击了上一首或者下一首)的时候，不论之前是暂停还是播放，都开始从头播放播放器
     // 在初始加载，currentIndex被修改的时候，都能触发currentSong的修改
     currentSong(newSong, oldSong) {
       if (newSong.id === oldSong.id) {
@@ -513,9 +531,13 @@ export default {
       // 歌词也需要停止
       if (this.currentLyric) {
         this.currentLyric.stop();
+        this.currentLyric = null;
       }
+      this.curLyricTxt = null;
       this.$nextTick(function() {
         this.$refs.audio.play();
+        // 这里先统一设置为true，如果真的歌曲资源有问题，在audioReady或者andioError中进行处理
+        this.setPlaying(true);
         this.getLyric();
       });
     },
@@ -657,7 +679,7 @@ export default {
                 .icon {
                     color: $color-theme;
                     font-size: 30px;
-                    &.disable {
+                    .disable {
                         color: #333;
                     }
                 }
