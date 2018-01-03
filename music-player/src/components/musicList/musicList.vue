@@ -13,7 +13,7 @@
     </div>
     <div class="bg-layer" ref="bgLayer"></div>
     <scroll ref="scroll" class="scroll" :probeType="probeType" :listenScroll="listenScroll" @scroll="handleScroll">
-      <songlist :songs="songs" @selectSong="handleSongSelect"></songlist>
+      <songlist :songs="songs" @selectSong="handleSongSelect" :rank="rank"></songlist>
     </scroll>
   </div>
 
@@ -25,7 +25,7 @@
 // 2.和vux相关的内容实现，诸如随机播放音乐，点击开始播放音乐等等
 import scroll from '@/base/scroll.vue';
 import loading from '@/base/loading/loading.vue';
-import songlist from '@/base/songlist.vue';
+import songlist from '@/base/songlist/songlist.vue';
 import miniPlayerMixin from '@/base/mixin/miniPlayerMixin';
 import {
   prefix
@@ -67,6 +67,10 @@ export default {
       default: function() {
         return [];
       }
+    },
+    rank: { // rank为true时，会显示图标
+      type: Boolean,
+      default: false
     }
   },
   methods: {

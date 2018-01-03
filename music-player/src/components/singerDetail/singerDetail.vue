@@ -68,8 +68,8 @@ export default {
 .slide-leave-to {
     transform: translate3d(100%, 0, 0);
 }
-.slide-enter-to,
-.slide-leave {
+.slide-enter-active,
+.slide-leave-active {
     transition: all 0.3s;
 }
 </style>

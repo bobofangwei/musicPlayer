@@ -23,5 +23,8 @@ export default {
   },
   [types.SET_FULLSCREEN](state, fullScreen) {
     state.fullScreen = fullScreen;
+  },
+  [types.SET_RANK](state, rank) {
+    state.rank = rank;
   }
 };

@@ -14,13 +14,10 @@ import {
 import Song from '@/model/song.js';
 import musicList from '@/components/musicList/musicList.vue';
 export default {
-  data: function() {
+  data() {
     return {
       songs: []
     };
-  },
-  components: {
-    musicList
   },
   created: function() {
     this.getDissSongs();
@@ -59,6 +56,9 @@ export default {
     bgImage() {
       return this.diss.imgurl;
     }
+  },
+  components: {
+    musicList
   }
 }
 </script>

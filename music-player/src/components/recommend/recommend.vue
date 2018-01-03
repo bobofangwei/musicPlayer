@@ -70,6 +70,12 @@ export default {
       // console.log('res', res.data);
     });
   },
+  // activated: function() {
+  //   console.log('recommend.vue activated');
+  //   this.$nextTick(() => {
+  //     this.$refs.scroll.refresh();
+  //   });
+  // },
   methods: {
     selectDiss(item) {
       this.setDiss(item);

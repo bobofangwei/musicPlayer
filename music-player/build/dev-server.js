@@ -80,17 +80,34 @@ apiRouter.get('/getDissDetail', (req, res) => {
     res.end(err);
   });
 });
-// 其他接口的处理
-apiRouter.get('*', (req, response) => {
-  // console.log(req);
-  // console.log(req.url);
-  // let url = 'https://c.y.qq.com/musichall/fcgi-bin/fcg_yqqhomepagerecommend.fcg?g_tk=5381&uin=0&format=json&inCharset=utf-8&outCharset=utf-8&notice=0&platform=h5&needNewCode=1&_=1508740282027';
-  let url = 'https://c.y.qq.com' + req.url;
-  return axios.get(url).then((res) => {
-    // console.log(JSON.stringify(resData.data));
-    response.json(res.data);
+// 获取排行详情的处理
+apiRouter.get('/getRankDetail', (req, res) => {
+  const url = 'https://c.y.qq.com/v8/fcg-bin/fcg_v8_toplist_cp.fcg';
+  // console.log('req.headers', req.headers);
+  // console.log('req.query', req.query);
+  return axios.get(url, {
+    headers: {
+      'authority': 'c.y.qq.com',
+      'referer': 'https://y.qq.com/n/yqq/toplist/' + req.query.topid + '.html'
+    },
+    params: req.query
+  }).then((resData) => {
+    res.end(resData.data);
+  }).catch((err) => {
+    res.end(err);
   });
 });
+// 其他接口的处理
+// apiRouter.get('*', (req, response) => {
+//   // console.log(req);
+//   // console.log(req.url);
+//   // let url = 'https://c.y.qq.com/musichall/fcgi-bin/fcg_yqqhomepagerecommend.fcg?g_tk=5381&uin=0&format=json&inCharset=utf-8&outCharset=utf-8&notice=0&platform=h5&needNewCode=1&_=1508740282027';
+//   let url = 'https://c.y.qq.com' + req.url;
+//   return axios.get(url).then((res) => {
+//     // console.log(JSON.stringify(resData.data));
+//     response.json(res.data);
+//   });
+// });
 app.use('/api', apiRouter);
 /*my own Code End*/
 
@@ -138,7 +155,7 @@ app.use(devMiddleware)
 const staticPath = path.posix.join(config.dev.assetsPublicPath, config.dev.assetsSubDirectory)
 app.use(staticPath, express.static('./static'))
 
-const uri = 'http://192.168.1.6:' + port
+const uri = 'http://10.3.135.208:' + port
 
 var _resolve
 var _reject
@@ -158,7 +175,7 @@ devMiddleware.waitUntilValid(() => {
       _reject(err)
     }
     process.env.PORT = port
-    var uri = 'http://192.168.1.6:' + port
+    var uri = 'http://10.3.135.208:' + port
     console.log('> Listening at ' + uri + '\n')
     // when env is testing, don't need open it
     if (autoOpenBrowser && process.env.NODE_ENV !== 'testing') {
