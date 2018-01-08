@@ -97,17 +97,17 @@ apiRouter.get('/getRankDetail', (req, res) => {
     res.end(err);
   });
 });
-// 其他接口的处理
-// apiRouter.get('*', (req, response) => {
-//   // console.log(req);
-//   // console.log(req.url);
-//   // let url = 'https://c.y.qq.com/musichall/fcgi-bin/fcg_yqqhomepagerecommend.fcg?g_tk=5381&uin=0&format=json&inCharset=utf-8&outCharset=utf-8&notice=0&platform=h5&needNewCode=1&_=1508740282027';
-//   let url = 'https://c.y.qq.com' + req.url;
-//   return axios.get(url).then((res) => {
-//     // console.log(JSON.stringify(resData.data));
-//     response.json(res.data);
-//   });
-// });
+// // 其他接口的处理
+apiRouter.get('*', (req, response) => {
+  // console.log(req);
+  // console.log(req.url);
+  // let url = 'https://c.y.qq.com/musichall/fcgi-bin/fcg_yqqhomepagerecommend.fcg?g_tk=5381&uin=0&format=json&inCharset=utf-8&outCharset=utf-8&notice=0&platform=h5&needNewCode=1&_=1508740282027';
+  let url = 'https://c.y.qq.com' + req.url;
+  return axios.get(url).then((res) => {
+    // console.log(JSON.stringify(resData.data));
+    response.json(res.data);
+  });
+});
 app.use('/api', apiRouter);
 /*my own Code End*/
 
@@ -155,7 +155,7 @@ app.use(devMiddleware)
 const staticPath = path.posix.join(config.dev.assetsPublicPath, config.dev.assetsSubDirectory)
 app.use(staticPath, express.static('./static'))
 
-const uri = 'http://10.3.135.208:' + port
+const uri = 'http://10.3.135.206:' + port
 
 var _resolve
 var _reject
@@ -175,7 +175,7 @@ devMiddleware.waitUntilValid(() => {
       _reject(err)
     }
     process.env.PORT = port
-    var uri = 'http://10.3.135.208:' + port
+    var uri = 'http://10.3.135.206:' + port
     console.log('> Listening at ' + uri + '\n')
     // when env is testing, don't need open it
     if (autoOpenBrowser && process.env.NODE_ENV !== 'testing') {
